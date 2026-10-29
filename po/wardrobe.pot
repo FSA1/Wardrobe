@@ -1,127 +1,208 @@
-# Translation template for Wardrobe
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the wardrobe package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
+#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: wardrobe\n"
-"POT-Creation-Date: 2026-06-07 00:00+0000\n"
-"PO-Revision-Date: 2026-06-07 00:00+0000\n"
-"Last-Translator: \n"
-"Language-Team: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-29 14:34-0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: \n"
 
-#. Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
-#: main.py:37
-msgid "translator-credits"
+#: data/io.github.swordpuffin.wardrobe.desktop.in:2
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:7
+#: src/widgets/main_page.py:90
+msgid "Wardrobe Plus"
 msgstr ""
 
-#: main_page.py:110
-msgid "Curated"
+#: data/io.github.swordpuffin.wardrobe.desktop.in:8
+msgid "wardrobe;appearance;gtk;gnome;icon;wallpaper;shell;"
 msgstr ""
 
-#: main_page.py:110
-msgid "Most Downloaded"
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:8
+msgid "Prettify your desktop effortlessly"
 msgstr ""
 
-#: main_page.py:110
-msgid "New & Updated"
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:10
+msgid ""
+"Wardrobe is a utility for downloading and activating community made GNOME "
+"Shell, GTK3/4, icon, and cursor themes as well as wallpapers"
 msgstr ""
 
-#: main_page.py:40
-msgid "GNOME Shell"
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:14
+msgid "Nathan Perlman"
 msgstr ""
 
-#: main_page.py:41
-msgid "Icons"
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:32
+msgid "The front page"
 msgstr ""
 
-#: main_page.py:42
-msgid "GTK3/4"
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:36
+msgid "Browsing for cursor themes"
 msgstr ""
 
-#: main_page.py:43
-msgid "Cursors"
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:40
+msgid "Searching for a specific theme"
 msgstr ""
 
-#: main_page.py:44
-msgid "Wallpapers"
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:44
+msgid "Downloading the Papirus icon pack"
 msgstr ""
 
-#: main_page.py:45
-msgid "Search"
-msgstr ""
-
-#: main_page_banner.py:46
-msgid "Get"
-msgstr ""
-
-#: main_page_banner.py:77 install_page.py:81 theme_cell.py:59
+#: src/widgets/install_page.py:421 src/widgets/main_page_banner.py:82
+#: src/widgets/theme_cell.py:109
 msgid "By: "
 msgstr ""
 
-#: install_page.py:104
-msgid "Downloads"
+#: src/widgets/install_page.py:449
+msgid "Unknown"
 msgstr ""
 
-#: install_page.py:104
-msgid "Rating"
-msgstr ""
-
-#: install_page.py:104
-msgid "Last Updated"
-msgstr ""
-
-#: install_page.py:156
+#: src/widgets/install_page.py:513
 msgid "Show More"
 msgstr ""
 
-#: install_page.py:163
+#: src/widgets/install_page.py:520
 msgid "Show Less"
 msgstr ""
 
-#: install_page.py:167
+#: src/widgets/install_page.py:524
 msgid "Read more"
 msgstr ""
 
-#: install_page.py:175
+#: src/widgets/install_page.py:532
 msgid "Save Folder"
 msgstr ""
 
-#: install_page.py:188
+#: src/widgets/install_page.py:546
 msgid "Become a supporter"
 msgstr ""
 
-#: install_page.py:268
+#: src/widgets/install_page.py:566 src/widgets/install_page.py:709
+#: src/widgets/theme_page.py:511 src/widgets/theme_page.py:524
+msgid "Remove"
+msgstr ""
+
+#: src/widgets/install_page.py:567 src/widgets/install_page.py:710
+msgid "Installed; remove this theme"
+msgstr ""
+
+#: src/widgets/install_page.py:574 src/widgets/install_page.py:660
+#: src/widgets/install_page.py:698
+msgid "Install"
+msgstr ""
+
+#: src/widgets/install_page.py:575 src/widgets/install_page.py:661
+msgid "Install this theme"
+msgstr ""
+
+#: src/widgets/install_page.py:588
+msgid "Installation is not supported for this item"
+msgstr ""
+
+#: src/widgets/install_page.py:671
 msgid "Use"
 msgstr ""
 
-#: search_page.py:35
+#: src/main.py:52
+msgid ""
+"Fork improvements planned and implemented by FSA1 with assistance from "
+"GitHub Copilot (AI)."
+msgstr ""
+
+#. Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
+#: src/main.py:55
+msgid "translator-credits"
+msgstr ""
+
+#: src/widgets/main_page_banner.py:43
+msgid "Get"
+msgstr ""
+
+#: src/widgets/search_page.py:28
+msgid "Search"
+msgstr ""
+
+#: src/widgets/search_page.py:31 src/widgets/theme_page.py:64
 msgid "Search Themes"
 msgstr ""
 
-#: search_page.py:58 theme_cell_flowbox.py:37 theme_page.py:51
-msgid "Next Page"
+#: src/widgets/search_page.py:47
+msgid "Select at least one category to search"
 msgstr ""
 
-#: search_page.py:94
-msgid "Gnome Shell"
+#: src/widgets/search_page.py:67 src/widgets/theme_page.py:198
+msgid "Search failed"
 msgstr ""
 
-#: theme_page.py:46
-msgid "Popular"
+#: src/widgets/search_page.py:257
+msgid "Select all"
 msgstr ""
 
-#: theme_page.py:46
-msgid "Alphabetical"
+#: src/widgets/search_page.py:262
+msgid "Clear all"
 msgstr ""
 
-#: theme_page.py:46
-msgid "Rating"
+#: src/widgets/theme_page.py:50
+msgid "Themes"
 msgstr ""
 
-#: theme_page.py:46
-msgid "Latest"
+#: src/widgets/theme_page.py:88
+msgid "Installed"
+msgstr ""
+
+#: src/widgets/theme_page.py:103 src/widgets/theme_page.py:390
+msgid "No installed themes found"
+msgstr ""
+
+#: src/widgets/theme_page.py:184
+msgid "No themes found"
+msgstr ""
+
+#: src/widgets/theme_page.py:297
+msgid "Could not load themes"
+msgstr ""
+
+#: src/widgets/theme_page.py:392
+msgid "No installed themes match your search"
+msgstr ""
+
+#: src/widgets/theme_page.py:520
+msgid "Remove installed theme?"
+msgstr ""
+
+#: src/widgets/theme_page.py:521
+msgid "This will remove the selected theme from your user data."
+msgstr ""
+
+#: src/widgets/theme_page.py:523
+msgid "Cancel"
+msgstr ""
+
+#: src/widgets/theme_page.py:550
+msgid "Could not remove theme"
+msgstr ""
+
+#: src/widgets/theme_page.py:553
+msgid "Close"
+msgstr ""
+
+#: src/window.ui:24
+msgid "Menu"
+msgstr ""
+
+#: src/window.ui:43
+msgid "_Keyboard Shortcuts"
+msgstr ""
+
+#: src/window.ui:47
+msgid "_About Wardrobe Plus"
 msgstr ""

@@ -1,11 +1,9 @@
-import gi, json
-from gi.repository import Gtk, Adw, Soup, GLib, Gdk
+import gi, json, logging
+from gi.repository import Gtk, Adw, GLib, Gdk
 from .install_page import InstallPage
-from .utils import soup_get
+from .utils import soup_get, soup_get_bytes
 
 class FeaturedBanner(Gtk.Overlay):
-    session = Soup.Session()
-
     def __init__(self):
         super().__init__(height_request=260)
         self.add_css_class("card")
@@ -30,7 +28,6 @@ class FeaturedBanner(Gtk.Overlay):
     def make_content_row(self):
         def on_get_clicked(button):
             install_page = InstallPage(self)
-            self.page.add(install_page)
             self.page.push(install_page)
 
         self.title_label = Gtk.Label(label="", xalign=0.0, wrap=True, hexpand=True, max_width_chars=48)
@@ -60,13 +57,21 @@ class FeaturedBanner(Gtk.Overlay):
         row.append(get_button)
         return row
 
-    def on_image_loaded(self, session, result):
-        data = self.session.send_and_read_finish(result)
-        texture = Gdk.Texture.new_from_bytes(data)
-        del data
+    def on_image_loaded(self, data):
+        try:
+            texture = Gdk.Texture.new_from_bytes(data)
+        except (GLib.Error, ValueError) as error:
+            logging.warning("Could not decode featured preview: %s", error)
+            self.on_image_error(error)
+            return
         self.background.set_paintable(texture)
         self.scrim.add_css_class("featured-banner-scrim")
+        self.spinner.set_spinning(False)
+        self.spinner.set_visible(False)
+        self.content_row.set_visible(True)
 
+    def on_image_error(self, error):
+        logging.warning("Could not load featured preview: %s", error)
         self.spinner.set_spinning(False)
         self.spinner.set_visible(False)
         self.content_row.set_visible(True)
@@ -76,9 +81,14 @@ class FeaturedBanner(Gtk.Overlay):
             self.title_label.set_label(self.title)
             self.meta_label.set_label(_("By: ") + self.dev + f"   ↓ {self.downloads}   ★ {self.rating}")
 
-            image_url = self.image_urls[0]
-            message = Soup.Message(method="GET", uri=GLib.Uri.parse(image_url, GLib.UriFlags.NONE))
-            self.session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, None, self.on_image_loaded)
+            if self.image_urls:
+                soup_get_bytes(
+                    self.image_urls[0],
+                    self.on_image_loaded,
+                    self.on_image_error,
+                )
+            else:
+                self.on_image_error(RuntimeError("Featured item has no preview image"))
 
         def get_params(response):
             if(isinstance(response, str)):

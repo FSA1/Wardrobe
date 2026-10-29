@@ -78,16 +78,16 @@ class CategoryBox(Gtk.FlowBox):
     def on_category_clicked(self, button, category):
         if(category == "Search"):
             search_page = SearchPage(self.view)
-            self.view.add(search_page)
             self.view.push(search_page)
         else:
             self.theme_page.category = category
+            self.theme_page.set_title(_(category))
             self.theme_page.make_new_page()
             self.view.push(self.theme_page)
 
 class MainPage(Adw.NavigationPage):
     def __init__(self, view):
-        super().__init__(tag="main_page")
+        super().__init__(title=_("Wardrobe Plus"), tag="main_page")
         content_box = Gtk.Box(vexpand=True, hexpand=True, orientation=Gtk.Orientation.VERTICAL, spacing=18, margin_bottom=25)
         curated_ids = random.sample(["2299211", "1681315", "1477945", "1166289", "1359276", "1598493", "1197198", "1366182", "1209330", "1267246", "1203425", "2116659", "1476107"], 8)
         featured_banner = FeaturedBanner()
@@ -142,7 +142,3 @@ class MainPage(Adw.NavigationPage):
 
     def get_url(self, id):
         return f"https://api.opendesktop.org/ocs/v1/content/data/{id}?format=json"
-
-
-
-

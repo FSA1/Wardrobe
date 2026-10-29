@@ -46,8 +46,14 @@ class WardrobeWindow(Adw.ApplicationWindow):
         self.page.connect("popped", self.on_page_popped)
 
         self.page.add(self.main_page)
+        self.update_header_title()
         self.back_button.connect("clicked", self.back_to_menu)
         self.back_button.set_visible(False)
+
+    def update_header_title(self):
+        visible_page = self.page.get_visible_page()
+        if visible_page is not None:
+            self.set_title(visible_page.get_title())
         
     def back_to_menu(self, button):
         if(self.page.get_visible_page_tag() != "main_page"):
@@ -56,9 +62,11 @@ class WardrobeWindow(Adw.ApplicationWindow):
             self.page.pop()
 
     def on_page_pushed(self, page):
+        self.update_header_title()
         self.back_button.set_visible(True)
 
     def on_page_popped(self, page, _):
+        self.update_header_title()
         if(self.page.get_visible_page_tag() == "main_page"):
             self.back_button.set_visible(False)
         if(self.page.find_page("search_page") != None):

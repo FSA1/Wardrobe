@@ -17,6 +17,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
+import os
 import sys
 import gi
 
@@ -41,13 +43,19 @@ class WardrobeApplication(Adw.Application):
         win.present()
 
     def on_about_action(self, *args):
-        about = Adw.AboutDialog(application_name='Wardrobe',
-                                application_icon='io.github.swordpuffin.wardrobe',
-                                developer_name='Nathan Perlman',
-                                version='1.1.5',
-                                developers=['Nathan Perlman'],
-                                artists=['Hylke Bons https://planetpeanut.studio'],
-                                copyright='© 2026 Nathan Perlman')
+        about = Adw.AboutDialog(
+            application_name='Wardrobe Plus',
+            application_icon='io.github.swordpuffin.wardrobe',
+            developer_name='FSA1',
+            version='1.1.5',
+            developers=['Nathan Perlman'],
+            artists=['Hylke Bons https://planetpeanut.studio'],
+            comments=_(
+                'Fork improvements planned and implemented by FSA1 with '
+                'assistance from GitHub Copilot (AI).'
+            ),
+            copyright='© 2026 FSA1; original Wardrobe © 2025 Nathan Perlman',
+        )
         # Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
         about.set_translator_credits(_('translator-credits'))
         about.present(self.props.active_window)
@@ -60,5 +68,10 @@ class WardrobeApplication(Adw.Application):
             self.set_accels_for_action(f"app.{name}", shortcuts)
 
 def main(version):
+    if os.environ.get("WARDROBE_TRACE_INSTALL") == "1":
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s %(message)s",
+        )
     app = WardrobeApplication()
     return app.run(sys.argv)

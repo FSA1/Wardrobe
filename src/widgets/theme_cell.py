@@ -18,34 +18,84 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import gi
-from gi.repository import Gtk, Adw, Soup, GLib, Gdk
+import logging
+from gi.repository import Gtk, Adw, GLib, Gdk
 from .install_page import InstallPage
+from .utils import soup_get_bytes
 
 class ThemeCell(Gtk.Box):
-    session = Soup.Session()
     def __init__(self):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, width_request=350, height_request=400)
         self.add_css_class("card")
-    
-    def set_thumbnail_image(self, session, result, background):
-        bytes = self.session.send_and_read_finish(result)
-        texture = Gdk.Texture.new_from_bytes(bytes)
-        
-        background.unparent()
-        background = Gtk.Picture.new_for_paintable(texture)
-        background.set_content_fit(Gtk.ContentFit.COVER)
-        background.add_css_class("rounded")
-        background.set_vexpand(True)
-        
-        self.append(background)
-        self.append(self.make_bottom_box())
+        self.set_focusable(True)
+        self.set_cursor_from_name("pointer")
+        click_controller = Gtk.GestureClick()
+        click_controller.connect("released", self.on_card_clicked)
+        self.add_controller(click_controller)
+        key_controller = Gtk.EventControllerKey()
+        key_controller.connect("key-pressed", self.on_key_pressed)
+        self.add_controller(key_controller)
+        self._destroyed = False
+        self._footer_added = False
+
+    def open_details(self):
+        install_page = InstallPage(self)
+        self.page.push(install_page)
+
+    def on_card_clicked(self, gesture, n_press, x, y):
+        self.open_details()
+
+    def on_key_pressed(self, controller, keyval, keycode, state):
+        if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space):
+            self.open_details()
+            return True
+        return False
+
+    def show_preview(self, image_bytes):
+        if self._destroyed:
+            return
+        try:
+            texture = Gdk.Texture.new_from_bytes(image_bytes)
+            picture = Gtk.Picture.new_for_paintable(texture)
+            picture.set_content_fit(Gtk.ContentFit.COVER)
+            picture.add_css_class("rounded")
+            picture.set_vexpand(True)
+            self.background.stop()
+            self.background.unparent()
+            self.append(picture)
+        except (GLib.Error, ValueError) as error:
+            logging.warning("Could not decode preview for %s: %s", self.title, error)
+            self.show_preview_placeholder()
+        self.add_footer()
+
+    def on_preview_error(self, error):
+        if self._destroyed:
+            return
+        logging.warning("Could not load preview for %s: %s", self.title, error)
+        self.show_preview_placeholder()
+
+    def show_preview_placeholder(self):
+        if self._destroyed:
+            return
+        self.background.stop()
+        if self.background.get_parent():
+            self.background.unparent()
+        placeholder = Gtk.Image(
+            icon_name="image-missing-symbolic",
+            pixel_size=96,
+            vexpand=True,
+            valign=Gtk.Align.CENTER,
+        )
+        placeholder.add_css_class("dimmed")
+        self.append(placeholder)
+        self.add_footer()
+
+    def add_footer(self):
+        if not self._footer_added:
+            self.append(self.make_bottom_box())
+            self._footer_added = True
 
     def make_bottom_box(self):
-        def on_get_button_clicked(button):
-            install_page = InstallPage(self)
-            self.page.add(install_page)
-            self.page.push(install_page)
-
         separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         bottom_box = Gtk.Box(margin_start=12, margin_end=12, margin_top=8, margin_bottom=10, spacing=4)
 
@@ -63,32 +113,29 @@ class ThemeCell(Gtk.Box):
         text_box.append(dev_label)
         text_box.append(download_label)
 
-        self.get_button = Gtk.Button(icon_name="download-symbolic", valign=Gtk.Align.CENTER)
-        self.get_button.set_css_classes(["circular", "suggested-action"])
-        self.button_id = self.get_button.connect("clicked", on_get_button_clicked)
-
-        bottom_box.append(text_box)
-        bottom_box.append(self.get_button)
-
         wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         wrapper.append(separator)
         wrapper.append(bottom_box)
-        
+        bottom_box.append(text_box)
         return wrapper
-    
+
     def destroy_cell(self):
-        try:
-            self.get_button.disconnect(self.button_id)
-        except:
-            # Errors might arise in testing, something like: gdk-pixbuf-error-quark: Loader process exited early with status '1'
-            # I do not believe this happens in production
-            print("Unable to disconnect function")
-        
+        self._destroyed = True
+
     def build_cell(self):
-        url = self.image_urls[0]
-        background = Gtk.Spinner(spinning=True, vexpand=True, valign=Gtk.Align.CENTER, width_request=40, height_request=40)
-        self.append(background)
-        message = Soup.Message(method="GET", uri=GLib.Uri.parse(url, GLib.UriFlags.NONE))
-        self.session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, None, self.set_thumbnail_image, background)
-
-
+        self.background = Gtk.Spinner(
+            spinning=True,
+            vexpand=True,
+            valign=Gtk.Align.CENTER,
+            width_request=40,
+            height_request=40,
+        )
+        self.append(self.background)
+        if not self.image_urls:
+            self.show_preview_placeholder()
+            return
+        soup_get_bytes(
+            self.image_urls[0],
+            self.show_preview,
+            self.on_preview_error,
+        )

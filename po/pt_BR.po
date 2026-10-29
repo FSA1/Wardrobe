@@ -16,8 +16,8 @@ msgstr ""
 
 #: data/io.github.swordpuffin.wardrobe.desktop.in:2
 #: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:7
-msgid "Wardrobe"
-msgstr "Guarda-roupa"
+msgid "Wardrobe Plus"
+msgstr "Wardrobe Plus"
 
 #: data/io.github.swordpuffin.wardrobe.desktop.in:8
 msgid "wardrobe;appearance;gtk;gnome;icon;wallpaper;shell;"
@@ -78,5 +78,13 @@ msgid "_Keyboard Shortcuts"
 msgstr "_Atalhos de teclado"
 
 #: src/window.ui:49
-msgid "_About Wardrobe"
-msgstr "_Sobre Guarda-roupa"
+msgid "_About Wardrobe Plus"
+msgstr "_Sobre Wardrobe Plus"
+
+#: src/main.py:52
+msgid ""
+"Fork improvements planned and implemented by FSA1 with assistance from "
+"GitHub Copilot (AI)."
+msgstr ""
+"As melhorias do fork foram planejadas e implementadas por FSA1, com "
+"assistência de desenvolvimento do GitHub Copilot (IA)."

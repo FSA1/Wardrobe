@@ -24,28 +24,46 @@ from .utils import soup_get, parse_json
 class ThemeCellFlowbox(Gtk.FlowBox):
     def __init__(self):
         super().__init__(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, column_spacing=12, row_spacing=12, halign=Gtk.Align.CENTER, margin_bottom=12)
+        self.search_query = ""
+        self.set_filter_func(self.filter_theme, None)
+
+    def filter_by_text(self, text):
+        self.search_query = text.strip().casefold()
+        self.invalidate_filter()
+
+    def filter_theme(self, child, user_data):
+        if not self.search_query:
+            return True
+
+        widget = child.get_child()
+        while widget is not None and not hasattr(widget, "title"):
+            widget = widget.get_first_child()
+
+        if widget is None:
+            return False
+
+        searchable_text = f"{widget.title} {getattr(widget, 'dev', '')}".casefold()
+        return self.search_query in searchable_text
         
     def add_themes(self, response):
-        if(isinstance(response, str)):
-            data = json.loads(response)
-        else:
-            data = response
-                
         parse_json(response, self)
-        self.next_page_button.set_visible(True)
-        self.next_page_button.set_sensitive(True)
-        self.next_page_button.set_label(_("Next Page"))
-        if(hasattr(self, "is_search_flowbox") and len(data.get("data", [])) < 10):
-            self.next_page_button.set_visible(False)
-            self.search_icon.set_visible(True)
-            self.search_icon.set_from_icon_name("list-remove-symbolic")
 
-    def build_cells(self, url):
-        soup_get(url, self.add_themes)
+    def build_cells(self, url, response_handler=None, error_handler=None):
+        soup_get(url, response_handler or self.add_themes, error_handler)
         
     def remove_all(self):
-        for button in self:
-            button.get_first_child().get_first_child().destroy_cell()
+        def destroy_cells(widget):
+            if hasattr(widget, "destroy_cell"):
+                widget.destroy_cell()
+            child = widget.get_first_child()
+            while child is not None:
+                next_child = child.get_next_sibling()
+                destroy_cells(child)
+                child = next_child
+
+        child = self.get_first_child()
+        while child is not None:
+            next_child = child.get_next_sibling()
+            destroy_cells(child)
+            child = next_child
         super().remove_all()
-
-

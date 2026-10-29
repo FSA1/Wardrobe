@@ -9,7 +9,7 @@
 
         <child type="top">
           <object class="AdwHeaderBar">
-            <property name="show-title">false</property>
+            <property name="show-title">true</property>
 
             <child type="start">
               <object class="GtkButton" id="back_button">
@@ -44,10 +44,9 @@
         <attribute name="action">app.shortcuts</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">_About Wardrobe</attribute>
+        <attribute name="label" translatable="yes">_About Wardrobe Plus</attribute>
         <attribute name="action">app.about</attribute>
       </item>
     </section>
   </menu>
 </interface>
-

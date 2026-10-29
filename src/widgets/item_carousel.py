@@ -21,10 +21,9 @@ import gi
 from gi.repository import Gtk, Adw
 
 class ItemCarousel(Gtk.Overlay):
-    signal_ids = []
-    
     def __init__(self, connect_button, version):
         super().__init__()
+        self.signal_ids = []
         
         carousel = Adw.Carousel(allow_scroll_wheel=False, spacing=12)
         if(version == "infinite"):
