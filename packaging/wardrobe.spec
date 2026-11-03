@@ -1,6 +1,6 @@
 Name:           wardrobe
 Version:        1.1.5
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Wardrobe Plus GNOME theme manager
 
 %global debug_package %{nil}

@@ -42,7 +42,14 @@ class ThemeCellFlowbox(Gtk.FlowBox):
         if widget is None:
             return False
 
-        searchable_text = f"{widget.title} {getattr(widget, 'dev', '')}".casefold()
+        searchable_text = " ".join(
+            [
+                str(getattr(widget, "title", "")),
+                str(getattr(widget, "dev", "")),
+                str(getattr(widget, "description", "")),
+                " ".join(getattr(widget, "search_aliases", [])),
+            ]
+        ).casefold()
         return self.search_query in searchable_text
         
     def add_themes(self, response):

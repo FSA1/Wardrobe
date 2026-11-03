@@ -43,9 +43,13 @@ class ThemeCell(Gtk.Box):
         self.page.push(install_page)
 
     def on_card_clicked(self, gesture, n_press, x, y):
+        if getattr(self, "is_installed_card", False):
+            return
         self.open_details()
 
     def on_key_pressed(self, controller, keyval, keycode, state):
+        if getattr(self, "is_installed_card", False):
+            return False
         if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space):
             self.open_details()
             return True
@@ -90,6 +94,62 @@ class ThemeCell(Gtk.Box):
         self.append(placeholder)
         self.add_footer()
 
+    def show_local_preview(self, image_paths):
+        if self._destroyed:
+            return
+        picture_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=6,
+            vexpand=True,
+        )
+        picture = Gtk.Picture()
+        picture.set_content_fit(Gtk.ContentFit.COVER)
+        picture.set_vexpand(True)
+        picture.set_can_shrink(True)
+        picture_box.append(picture)
+        current = {"index": 0}
+
+        def display_image(index):
+            current["index"] = index % len(image_paths)
+            try:
+                texture = Gdk.Texture.new_from_filename(image_paths[current["index"]])
+            except (GLib.Error, OSError) as error:
+                logging.warning(
+                    "Could not load local preview for %s: %s",
+                    self.title,
+                    error,
+                )
+                picture.set_paintable(None)
+                return
+            picture.set_paintable(texture)
+
+        display_image(0)
+        if len(image_paths) > 1:
+            navigation = Gtk.Box(
+                spacing=12,
+                halign=Gtk.Align.CENTER,
+                margin_bottom=4,
+            )
+            previous = Gtk.Button(icon_name="go-previous-symbolic")
+            next_button = Gtk.Button(icon_name="go-next-symbolic")
+            count = Gtk.Label(label=f"1 / {len(image_paths)}")
+
+            def change_image(button, offset):
+                display_image(current["index"] + offset)
+                count.set_label(f"{current['index'] + 1} / {len(image_paths)}")
+
+            previous.connect("clicked", change_image, -1)
+            next_button.connect("clicked", change_image, 1)
+            navigation.append(previous)
+            navigation.append(count)
+            navigation.append(next_button)
+            picture_box.append(navigation)
+
+        self.background.stop()
+        self.background.unparent()
+        self.append(picture_box)
+        self.add_footer()
+
     def add_footer(self):
         if not self._footer_added:
             self.append(self.make_bottom_box())
@@ -111,12 +171,45 @@ class ThemeCell(Gtk.Box):
 
         text_box.append(title_label)
         text_box.append(dev_label)
+        resource_types = getattr(self, "resource_types", [])
+        if resource_types:
+            category_label = Gtk.Label(
+                label=" · ".join(resource_types),
+                xalign=0,
+                wrap=True,
+                hexpand=True,
+            )
+            category_label.add_css_class("dimmed")
+            text_box.append(category_label)
         text_box.append(download_label)
 
         wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         wrapper.append(separator)
         wrapper.append(bottom_box)
         bottom_box.append(text_box)
+        if getattr(self, "installed_theme", None):
+            actions = Gtk.Box(
+                spacing=8,
+                halign=Gtk.Align.END,
+                margin_start=8,
+                margin_end=8,
+                margin_bottom=8,
+            )
+            edit_button = Gtk.Button(label=_("Edit Metadata"))
+            edit_button.add_css_class("pill")
+            edit_button.connect(
+                "clicked",
+                lambda *_: self.edit_installed_callback(self.installed_theme),
+            )
+            remove_button = Gtk.Button(label=_("Remove"))
+            remove_button.add_css_class("destructive-action")
+            remove_button.connect(
+                "clicked",
+                lambda *_: self.remove_installed_callback(self.installed_theme),
+            )
+            actions.append(edit_button)
+            actions.append(remove_button)
+            wrapper.append(actions)
         return wrapper
 
     def destroy_cell(self):
@@ -131,6 +224,10 @@ class ThemeCell(Gtk.Box):
             height_request=40,
         )
         self.append(self.background)
+        local_preview_paths = getattr(self, "local_preview_paths", [])
+        if local_preview_paths:
+            self.show_local_preview(local_preview_paths)
+            return
         if not self.image_urls:
             self.show_preview_placeholder()
             return

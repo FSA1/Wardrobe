@@ -3,6 +3,17 @@
 </p>
 <h1 align="center">Wardrobe Plus</h1>
 
+> **AI-generated fork modifications:**
+> The changes made in this fork were generated with AI. This does not mean
+> that the original application's code was written by AI. FSA1 defined the
+> goals and requirements and decides whether to review, use, or
+> distribute these changes.
+>
+> **Disclaimer:** This fork is provided “as is,” without warranties of any
+> kind. Use it at your own risk. The authors and contributors are not liable
+> for damage or data loss resulting from its use. Review changes and keep
+> backups, especially before removing installed themes or other files.
+
 <p align="center">
   <strong>Prettify your desktop effortlessly</strong>
 </p>
@@ -29,8 +40,13 @@
 - Browse and manage installed GNOME Shell, GTK, icon, cursor, and wallpaper
   themes. Files belonging to one downloaded item, including wallpaper previews
   and light/dark icon variants, are grouped as one installation.
-- Open theme details from cards and show server preview images for installed
-  themes when matching metadata is available.
+- Monitor and detect themes, icons, cursors, and wallpapers installed outside
+  Wardrobe in the user's local data folders (including the legacy `~/.themes`
+  and `~/.icons` folders); system-wide `/usr` resources are not scanned.
+- Group common theme variants, read available local `index.theme` metadata, and
+  use local preview images when available. Edit installed-item metadata, search
+  the Wardrobe catalog for a match, or set a name, author, description, and
+  preview image manually.
 - Cache OCS metadata and preview images in SQLite (up to 250 MiB on disk and
   16 MiB in memory). Entries are revalidated after 30 minutes when the server
   provides validators; recent cached data can be used if the network is down.
@@ -39,10 +55,9 @@
 
 ## Credits
 
-The fork's improvements were planned and implemented by **FSA1**, with
-development assistance from **GitHub Copilot (AI)**. The original Wardrobe
-application was created by Nathan Perlman; the application icon is by Hylke
-Bons.
+The fork-specific changes were defined by **FSA1** and generated with
+**GitHub Copilot (AI)**. The original Wardrobe application was created by
+Nathan Perlman; the application icon is by Hylke Bons.
 
 ## Installation
 
@@ -96,6 +111,25 @@ A DEB package or Flatpak can also be produced, but each needs distribution-
 specific packaging metadata. The existing Flatpak manifest in this repository
 still builds the upstream source rather than this fork.
 
+### Publish a GitHub pre-release
+
+The GitHub Actions workflow builds Fedora 44 binary and source RPMs, calculates
+their SHA-256 checksums, and attaches them to a GitHub pre-release. To publish,
+first commit and push the source and packaging changes, update the matching
+Meson and RPM spec versions, then tag the normalized RPM version and release.
+For example, Meson version `1.1.6~rc1` and spec release `0.1%{?dist}` use:
+
+```bash
+git tag v1.1.6-rc1-0.1
+git push origin v1.1.6-rc1-0.1
+```
+
+The workflow only runs after the tag is pushed; it does not publish a release
+for this checkout automatically. Its assets are manual downloads, not a DNF
+repository, so GNOME Software and DNF will not discover updates automatically.
+Each new RPM release needs a new version-release tag. The current local
+`1.1.5-5` build would use `v1.1.5-5`.
+
 ## Replacing the upstream installation
 
 This fork currently keeps the upstream application ID, desktop-file ID, D-Bus
@@ -126,7 +160,7 @@ fi
 Then install the RPM that the helper created:
 
 ```bash
-sudo dnf install "$HOME/rpmbuild/RPMS/x86_64/wardrobe-1.1.5-4.fc44.x86_64.rpm"
+sudo dnf install "$HOME/rpmbuild/RPMS/x86_64/wardrobe-1.1.5-5.fc44.x86_64.rpm"
 ```
 
 These steps remove the old application files, not user-installed themes in

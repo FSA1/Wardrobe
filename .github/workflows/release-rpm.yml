@@ -1,0 +1,84 @@
+name: Build RPM pre-release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rpm-pre-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="$(sed -n "s/^[[:space:]]*version: '\\([^']*\\)'.*/\\1/p" meson.build | head -n 1)"
+          release="$(sed -n 's/^Release:[[:space:]]*\([^%]*\).*/\1/p' packaging/wardrobe.spec | head -n 1 | tr -d '[:space:]')"
+          normalized_version="$(printf '%s' "$version" | tr '~' '-')"
+          expected_tag="v${normalized_version}-${release}"
+          if [[ "$RELEASE_TAG" != "$expected_tag" ]]; then
+            printf 'Tag %s does not match RPM version-release %s-%s (expected %s).\n' \
+              "$RELEASE_TAG" "$version" "$release" "$expected_tag" >&2
+            exit 1
+          fi
+
+      - name: Build RPMs in Fedora 44
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/rpm-build"
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --volume "$GITHUB_WORKSPACE/rpm-build:/root/rpmbuild" \
+            --workdir /workspace \
+            fedora:44 \
+            bash -euc '
+              dnf install -y \
+                appstream \
+                desktop-file-utils \
+                gettext \
+                git \
+                glib2-devel \
+                gnome-autoar-devel \
+                gtk4-devel \
+                libadwaita-devel \
+                libportal-gtk4-devel \
+                libsoup3-devel \
+                meson \
+                ninja-build \
+                rpm-build
+              git config --global --add safe.directory /workspace
+              RPM_TOPDIR=/root/rpmbuild packaging/build-rpm.sh
+            '
+
+      - name: Create checksums
+        run: |
+          (
+            cd rpm-build
+            find RPMS SRPMS -type f -name '*.rpm' -print0 \
+              | sort -z \
+              | xargs -0 -r sha256sum \
+              | sed 's#  .*/#  #'
+          ) > rpm-build/SHA256SUMS
+
+      - name: Publish GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            rpm-build/RPMS/x86_64/*.rpm \
+            rpm-build/SRPMS/*.rpm \
+            rpm-build/SHA256SUMS \
+            --title "Wardrobe Plus $RELEASE_TAG" \
+            --notes "Automated Fedora 44 pre-release build. These RPMs are distributed as GitHub release assets; they are not published in a DNF repository and will not appear as automatic system updates." \
+            --prerelease
