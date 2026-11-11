@@ -841,8 +841,6 @@ class ThemePage(Adw.NavigationPage):
         group.set_sensitive(False)
         self.empty_label.set_visible(False)
         self.theme_action("new_page", categories[self.category] + self.selected + "&page=0")
-        self.theme_flowbox.filter_by_text("")
-        self.theme_action("new_page", categories[self.category] + self.selected + "&page=0")
 
     def show_installed_themes(self):
         self.cancel_installed_monitors()
