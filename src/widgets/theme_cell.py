@@ -20,6 +20,7 @@
 import gi
 import logging
 from gi.repository import Gtk, Adw, GLib, Gdk
+from gi.repository import Pango
 from .install_page import InstallPage
 from .utils import soup_get_bytes
 
@@ -42,14 +43,13 @@ class ThemeCell(Gtk.Box):
         install_page = InstallPage(self)
         self.page.push(install_page)
 
+    def is_wallpaper(self):
+        return getattr(self, "theme_type", 0) in (261, 4)
+
     def on_card_clicked(self, gesture, n_press, x, y):
-        if getattr(self, "is_installed_card", False):
-            return
         self.open_details()
 
     def on_key_pressed(self, controller, keyval, keycode, state):
-        if getattr(self, "is_installed_card", False):
-            return False
         if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space):
             self.open_details()
             return True
@@ -63,7 +63,11 @@ class ThemeCell(Gtk.Box):
             picture = Gtk.Picture.new_for_paintable(texture)
             picture.set_content_fit(Gtk.ContentFit.COVER)
             picture.add_css_class("rounded")
-            picture.set_vexpand(True)
+            if self.is_wallpaper():
+                picture.set_size_request(350, 197)
+                picture.set_vexpand(False)
+            else:
+                picture.set_vexpand(True)
             self.background.stop()
             self.background.unparent()
             self.append(picture)
@@ -87,9 +91,11 @@ class ThemeCell(Gtk.Box):
         placeholder = Gtk.Image(
             icon_name="image-missing-symbolic",
             pixel_size=96,
-            vexpand=True,
+            vexpand=not self.is_wallpaper(),
             valign=Gtk.Align.CENTER,
         )
+        if self.is_wallpaper():
+            placeholder.set_size_request(350, 197)
         placeholder.add_css_class("dimmed")
         self.append(placeholder)
         self.add_footer()
@@ -100,11 +106,16 @@ class ThemeCell(Gtk.Box):
         picture_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=6,
-            vexpand=True,
+            vexpand=not self.is_wallpaper(),
         )
         picture = Gtk.Picture()
         picture.set_content_fit(Gtk.ContentFit.COVER)
-        picture.set_vexpand(True)
+        picture.add_css_class("rounded")
+        if self.is_wallpaper():
+            picture.set_size_request(350, 197)
+            picture.set_vexpand(False)
+        else:
+            picture.set_vexpand(True)
         picture.set_can_shrink(True)
         picture_box.append(picture)
         current = {"index": 0}
@@ -160,69 +171,61 @@ class ThemeCell(Gtk.Box):
         bottom_box = Gtk.Box(margin_start=12, margin_end=12, margin_top=8, margin_bottom=10, spacing=4)
 
         text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER, spacing=2)
-        title_label = Gtk.Label(label=self.title, xalign=0.0, wrap=True, hexpand=True)
+        title_label = Gtk.Label(
+            label=self.title,
+            xalign=0,
+            wrap=True,
+            max_width_chars=36,
+            hexpand=True,
+        )
         title_label.add_css_class("bold")
 
         download_label = Gtk.Label(label=f"↓ {self.downloads}, ★ {self.rating}", xalign=0.0, valign=Gtk.Align.CENTER)
         download_label.add_css_class("dimmed")
 
-        dev_label = Gtk.Label(label=_("By: ") + self.dev, xalign=0.0, hexpand=True, valign=Gtk.Align.CENTER)
+        dev_label = Gtk.Label(
+            label=_("By: ") + self.dev,
+            xalign=0,
+            width_chars=28,
+            max_width_chars=42,
+            ellipsize=Pango.EllipsizeMode.END,
+            single_line_mode=True,
+            hexpand=True,
+            valign=Gtk.Align.CENTER,
+        )
         dev_label.add_css_class("dimmed")
 
         text_box.append(title_label)
         text_box.append(dev_label)
-        resource_types = getattr(self, "resource_types", [])
-        if resource_types:
-            category_label = Gtk.Label(
-                label=" · ".join(resource_types),
-                xalign=0,
-                wrap=True,
-                hexpand=True,
-            )
-            category_label.add_css_class("dimmed")
-            text_box.append(category_label)
         text_box.append(download_label)
 
         wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         wrapper.append(separator)
         wrapper.append(bottom_box)
         bottom_box.append(text_box)
-        if getattr(self, "installed_theme", None):
-            actions = Gtk.Box(
-                spacing=8,
-                halign=Gtk.Align.END,
-                margin_start=8,
-                margin_end=8,
-                margin_bottom=8,
-            )
-            edit_button = Gtk.Button(label=_("Edit Metadata"))
-            edit_button.add_css_class("pill")
-            edit_button.connect(
-                "clicked",
-                lambda *_: self.edit_installed_callback(self.installed_theme),
-            )
-            remove_button = Gtk.Button(label=_("Remove"))
-            remove_button.add_css_class("destructive-action")
-            remove_button.connect(
-                "clicked",
-                lambda *_: self.remove_installed_callback(self.installed_theme),
-            )
-            actions.append(edit_button)
-            actions.append(remove_button)
-            wrapper.append(actions)
         return wrapper
 
     def destroy_cell(self):
         self._destroyed = True
 
     def build_cell(self):
-        self.background = Gtk.Spinner(
-            spinning=True,
-            vexpand=True,
-            valign=Gtk.Align.CENTER,
-            width_request=40,
-            height_request=40,
-        )
+        if self.is_wallpaper():
+            self.set_size_request(350, -1)
+            self.background = Gtk.Spinner(
+                spinning=True,
+                vexpand=False,
+                valign=Gtk.Align.CENTER,
+                width_request=350,
+                height_request=197,
+            )
+        else:
+            self.background = Gtk.Spinner(
+                spinning=True,
+                vexpand=True,
+                valign=Gtk.Align.CENTER,
+                width_request=40,
+                height_request=40,
+            )
         self.append(self.background)
         local_preview_paths = getattr(self, "local_preview_paths", [])
         if local_preview_paths:

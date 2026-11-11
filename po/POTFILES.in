@@ -13,5 +13,6 @@ src/widgets/theme_cell.py
 src/widgets/theme_cell_flowbox.py
 src/widgets/theme_page.py
 src/utils.py
+src/widgets/wallpaper_providers.py
 src/window.py
 src/window.ui

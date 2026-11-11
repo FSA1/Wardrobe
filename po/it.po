@@ -2,9 +2,9 @@
 #
 msgid ""
 msgstr ""
-
 "Project-Id-Version: wardrobe 1.1.2\n"
-"POT-Creation-Date: 2025-08-05 15:52-0400\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-04 13:22-0300\n"
 "PO-Revision-Date: 2026-01-06 11:12+0200\n"
 "Last-Translator: Albano Battistella <albanobattistella@gmail.com>\n"
 "Language-Team: Italian\n"
@@ -22,6 +22,7 @@ msgstr ""
 
 #: data/io.github.swordpuffin.wardrobe.desktop.in:2
 #: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:7
+#: src/widgets/main_page.py:90
 msgid "Wardrobe Plus"
 msgstr "Wardrobe Plus"
 
@@ -30,102 +31,584 @@ msgid "wardrobe;appearance;gtk;gnome;icon;wallpaper;shell;"
 msgstr "guardaroba;aspetto;gtk;gnome;icona;sfondo;shell;"
 
 #: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:8
-msgid "Gnome customization made easy"
-msgstr "Personalizzazione di Gnome resa facile"
+msgid "Prettify your desktop effortlessly"
+msgstr ""
 
 #: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:10
+#, fuzzy
 msgid ""
-"Wardrobe is a utility for downloading community made Gnome Shell, Gtk3/4, "
-"icon, and cursor themes as well as wallpapers"
-msgstr "Wardrobe è un'utility per scaricare temi per Gnome Shell, Gtk3/4, icone e cursori, creati dalla comunità, così come sfondi"
+"Wardrobe is a utility for downloading and activating community made GNOME "
+"Shell, GTK3/4, icon, and cursor themes as well as wallpapers"
+msgstr ""
+"Wardrobe è un'utility per scaricare temi per Gnome Shell, Gtk3/4, icone e "
+"cursori, creati dalla comunità, così come sfondi"
 
-#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:11
-msgid ""
-"**This app has not been tested for any desktop environments other than "
-"Gnome, so do not expect it to fully work in Cinnamon, Xfce, etc.**"
-msgstr "**Questa app non è stata testata per ambienti desktop diversi da Gnome, quindi non aspettarti che funzioni completamente in Cinnamon, Xfce, ecc.**"
-
-#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:15
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:14
 msgid "Nathan Perlman"
 msgstr "Nathan Perlman"
 
-#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:33
-msgid "Browsing for shell themes"
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:32
+msgid "The front page"
+msgstr ""
+
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:36
+#, fuzzy
+msgid "Browsing for cursor themes"
 msgstr "Ricerca di temi per la shell"
 
-#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:37
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:40
+#, fuzzy
+msgid "Searching for a specific theme"
+msgstr "Ricerca per parola chiave"
+
+#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:44
 msgid "Downloading the Papirus icon pack"
 msgstr "Download del pacchetto di icone Papirus"
 
-#: data/io.github.swordpuffin.wardrobe.metainfo.xml.in:41
-msgid "Searching for a keyword"
-msgstr "Ricerca per parola chiave"
-
-#. Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
-#: src/main.py:60
-msgid "translator-credits"
-msgstr "Albano Battistella <albanobattistella@gmail.com>"
-
-#: src/window.py:102
-msgid "GNOME Shell"
-msgstr "GNOME Shell"
-
-#: src/window.py:102
-msgid "Icon"
-msgstr "Icona"
-
-#: src/window.py:102
-msgid "Interface"
-msgstr "Interfaccia"
-
-#: src/window.py:102
-msgid "Cursor"
-msgstr "Cursore"
-
-#: src/window.py:102
-msgid "Search"
-msgstr "Cerca"
-
-#: src/window.py:102 src/window.py:189
-msgid "Wallpaper"
-msgstr "Sfondo"
-
-#: src/window.py:267
+#: src/widgets/install_page.py:1238 src/widgets/install_page.py:1441
+#: src/widgets/install_page.py:1870 src/widgets/main_page_banner.py:82
+#: src/widgets/theme_cell.py:183
 msgid "By: "
 msgstr "Di: "
 
-#: src/window.py:308
-msgid "Last updated: "
-msgstr "Ultimo aggiornamento: "
+#: src/widgets/install_page.py:1266 src/widgets/install_page.py:1841
+#: src/widgets/theme_page.py:1124 src/widgets/theme_page.py:1422
+#: src/widgets/theme_page.py:1599
+msgid "Unknown"
+msgstr ""
 
-#: src/window.py:308
-msgid "       Installs: "
-msgstr "       Installazioni: "
+#: src/widgets/install_page.py:1330 src/widgets/install_page.py:1970
+#: src/widgets/install_page.py:1985
+msgid "Show More"
+msgstr ""
 
-#: src/window.py:313
-msgid "... (Click for more)"
-msgstr "... (Clicca per maggiori informazioni)"
+#: src/widgets/install_page.py:1337 src/widgets/install_page.py:1980
+msgid "Show Less"
+msgstr ""
 
-#: src/window.py:463
+#: src/widgets/install_page.py:1341
+msgid "Read more"
+msgstr ""
+
+#: src/widgets/install_page.py:1349
+msgid "Save Folder"
+msgstr ""
+
+#: src/widgets/install_page.py:1363
+msgid "Become a supporter"
+msgstr ""
+
+#: src/widgets/install_page.py:1387 src/widgets/install_page.py:2040
+#: src/widgets/install_page.py:2204 src/widgets/theme_page.py:1173
+#: src/widgets/theme_page.py:1231 src/widgets/theme_page.py:1360
+msgid "Remove"
+msgstr ""
+
+#: src/widgets/install_page.py:1388 src/widgets/install_page.py:2205
+msgid "Installed; remove this theme"
+msgstr ""
+
+#: src/widgets/install_page.py:1395 src/widgets/install_page.py:2155
+#: src/widgets/install_page.py:2193
+msgid "Install"
+msgstr ""
+
+#: src/widgets/install_page.py:1396 src/widgets/install_page.py:2156
+msgid "Install this theme"
+msgstr ""
+
+#: src/widgets/install_page.py:1409
+msgid "Installation is not supported for this item"
+msgstr ""
+
+#: src/widgets/install_page.py:1453
+msgid "Open source page"
+msgstr ""
+
+#: src/widgets/install_page.py:1486 src/widgets/install_page.py:1776
+msgid "License: "
+msgstr ""
+
+#: src/widgets/install_page.py:1489 src/widgets/install_page.py:1781
+msgid "Check the source page for complete details and licensing."
+msgstr ""
+
+#: src/widgets/install_page.py:1504
+#, python-brace-format
+msgid "{width} × {height} pixels"
+msgstr ""
+
+#: src/widgets/install_page.py:1521
+msgid "Tags:"
+msgstr ""
+
+#: src/widgets/install_page.py:1572
+msgid "Show less"
+msgstr ""
+
+#: src/widgets/install_page.py:1572
+msgid "Show more"
+msgstr ""
+
+#: src/widgets/install_page.py:1608 src/widgets/install_page.py:1702
+#, fuzzy
+msgid "Save Wallpaper"
+msgstr "Sfondo"
+
+#: src/widgets/install_page.py:1622
+msgid "More like this"
+msgstr ""
+
+#: src/widgets/install_page.py:1662
+msgid "Save this wallpaper?"
+msgstr ""
+
+#: src/widgets/install_page.py:1663
+msgid "The image will be downloaded from its source and saved locally."
+msgstr ""
+
+#: src/widgets/install_page.py:1665 src/widgets/theme_page.py:1172
+#: src/widgets/theme_page.py:1230 src/widgets/theme_page.py:1293
+#: src/widgets/theme_page.py:1475 src/widgets/theme_page.py:1601
+msgid "Cancel"
+msgstr ""
+
+#: src/widgets/install_page.py:1666 src/widgets/theme_page.py:1294
+msgid "Save"
+msgstr ""
+
+#: src/widgets/install_page.py:1685
+msgid "The provider did not supply a download URL"
+msgstr ""
+
+#: src/widgets/install_page.py:1708
+msgid "The downloaded image is empty or too large"
+msgstr ""
+
+#: src/widgets/install_page.py:1724
+msgid "The downloaded file is not a supported image"
+msgstr ""
+
+#: src/widgets/install_page.py:1730
+msgid "The downloaded image does not meet the selected resolution"
+msgstr ""
+
+#: src/widgets/install_page.py:1742
+msgid "The downloaded image format is not supported"
+msgstr ""
+
+#: src/widgets/install_page.py:1748 src/widgets/wallpaper_providers.py:123
+#: src/widgets/wallpaper_providers.py:172
+msgid "Wallpaper"
+msgstr "Sfondo"
+
+#: src/widgets/install_page.py:1810
+msgid "Saved"
+msgstr ""
+
+#: src/widgets/install_page.py:1813 src/widgets/install_page.py:2024
+#: src/widgets/install_page.py:2166
 msgid "Use"
 msgstr "Usa"
 
-#: src/window.ui:23
-msgid "Menu"
-msgstr "Menu"
+#: src/widgets/install_page.py:1826
+msgid "Could not save wallpaper"
+msgstr ""
 
-#: src/window.ui:45
-msgid "_Keyboard Shortcuts"
-msgstr "_Scorciatoie da tastiera"
+#: src/widgets/install_page.py:1829 src/widgets/install_page.py:2271
+#: src/widgets/theme_page.py:1163 src/widgets/theme_page.py:1205
+#: src/widgets/theme_page.py:1256
+msgid "Close"
+msgstr ""
 
-#: src/window.ui:49
-msgid "_About Wardrobe Plus"
-msgstr "_Informazioni su Wardrobe Plus"
+#: src/widgets/install_page.py:1889
+msgid "Open theme page"
+msgstr ""
 
-#: src/main.py:52
+#: src/widgets/install_page.py:2008
+msgid "Installed Variants"
+msgstr ""
+
+#: src/widgets/install_page.py:2029
+msgid "Apply this installed variant"
+msgstr ""
+
+#: src/widgets/install_page.py:2060 src/widgets/theme_page.py:1287
+msgid "Edit Metadata"
+msgstr ""
+
+#: src/widgets/install_page.py:2067
+msgid "Remove All"
+msgstr ""
+
+#: src/widgets/install_page.py:2268 src/widgets/theme_page.py:1202
+msgid "Could not remove theme"
+msgstr ""
+
+#: src/main.py:54
 msgid ""
 "Fork improvements planned and implemented by FSA1 with assistance from "
 "GitHub Copilot (AI)."
 msgstr ""
 "Miglioramenti del fork pianificati e realizzati da FSA1 con l'assistenza "
 "allo sviluppo di GitHub Copilot (IA)."
+
+#. Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
+#: src/main.py:60
+msgid "translator-credits"
+msgstr "Albano Battistella <albanobattistella@gmail.com>"
+
+#: src/widgets/main_page_banner.py:43
+msgid "Get"
+msgstr ""
+
+#: src/widgets/search_page.py:28 src/widgets/theme_page.py:1382
+msgid "Search"
+msgstr "Cerca"
+
+#: src/widgets/search_page.py:31 src/widgets/theme_page.py:264
+#, fuzzy
+msgid "Search Themes"
+msgstr "Cerca"
+
+#: src/widgets/search_page.py:47
+msgid "Select at least one category to search"
+msgstr ""
+
+#: src/widgets/search_page.py:67 src/widgets/theme_page.py:665
+#: src/widgets/theme_page.py:698
+#, fuzzy
+msgid "Search failed"
+msgstr "Cerca"
+
+#: src/widgets/search_page.py:257
+msgid "Select all"
+msgstr ""
+
+#: src/widgets/search_page.py:262
+msgid "Clear all"
+msgstr ""
+
+#: src/widgets/theme_page.py:238
+msgid "Themes"
+msgstr ""
+
+#: src/widgets/theme_page.py:288
+msgid "Installed"
+msgstr ""
+
+#: src/widgets/theme_page.py:302
+#, fuzzy
+msgid "Search in"
+msgstr "Cerca"
+
+#: src/widgets/theme_page.py:309
+msgid "Pling / GNOME-Look"
+msgstr ""
+
+#: src/widgets/theme_page.py:310
+#, fuzzy
+msgid "Wallhaven"
+msgstr "Sfondo"
+
+#: src/widgets/theme_page.py:311
+msgid "Wikimedia Commons"
+msgstr ""
+
+#: src/widgets/theme_page.py:321
+msgid "Minimum resolution"
+msgstr ""
+
+#: src/widgets/theme_page.py:324
+msgid "Any size"
+msgstr ""
+
+#: src/widgets/theme_page.py:336
+msgid "The resolution filter is available for Wallhaven and Wikimedia Commons"
+msgstr ""
+
+#: src/widgets/theme_page.py:369 src/widgets/theme_page.py:440
+msgid "No installed themes found"
+msgstr ""
+
+#: src/widgets/theme_page.py:442
+msgid "No installed themes match your search"
+msgstr ""
+
+#: src/widgets/theme_page.py:567
+msgid "Select at least one source"
+msgstr ""
+
+#: src/widgets/theme_page.py:669
+msgid "No wallpapers found"
+msgstr ""
+
+#: src/widgets/theme_page.py:684
+msgid "No themes found"
+msgstr ""
+
+#: src/widgets/theme_page.py:814
+msgid "Could not load themes"
+msgstr ""
+
+#: src/widgets/theme_page.py:1160
+msgid "Could not save metadata"
+msgstr ""
+
+#: src/widgets/theme_page.py:1169
+msgid "Remove installed theme?"
+msgstr ""
+
+#: src/widgets/theme_page.py:1170
+msgid "This will remove the selected item from its user folder."
+msgstr ""
+
+#: src/widgets/theme_page.py:1226
+msgid "Remove this variant?"
+msgstr ""
+
+#: src/widgets/theme_page.py:1227
+msgid "Only the selected installed variant will be removed: "
+msgstr ""
+
+#: src/widgets/theme_page.py:1253
+msgid "Could not remove variant"
+msgstr ""
+
+#: src/widgets/theme_page.py:1317 src/widgets/theme_page.py:1397
+msgid "Name"
+msgstr ""
+
+#: src/widgets/theme_page.py:1321 src/widgets/theme_page.py:1399
+msgid "Author"
+msgstr ""
+
+#: src/widgets/theme_page.py:1342 src/widgets/theme_page.py:1471
+msgid "Add Preview Images"
+msgstr ""
+
+#: src/widgets/theme_page.py:1346
+msgid "No preview images selected"
+msgstr ""
+
+#: src/widgets/theme_page.py:1376
+msgid "Search the Wardrobe catalog"
+msgstr ""
+
+#: src/widgets/theme_page.py:1379
+msgid "Search by theme name"
+msgstr ""
+
+#: src/widgets/theme_page.py:1392
+msgid "Load More Results"
+msgstr ""
+
+#: src/widgets/theme_page.py:1396
+msgid "Local Metadata"
+msgstr ""
+
+#: src/widgets/theme_page.py:1401
+msgid "Description"
+msgstr ""
+
+#: src/widgets/theme_page.py:1404
+msgid "Preview images"
+msgstr ""
+
+#: src/widgets/theme_page.py:1425
+msgid "Use This Match"
+msgstr ""
+
+#: src/widgets/theme_page.py:1432
+msgid "No catalog matches found. You can edit the metadata below."
+msgstr ""
+
+#: src/widgets/theme_page.py:1434
+msgid "Select a matching item to review and confirm it."
+msgstr ""
+
+#: src/widgets/theme_page.py:1439
+msgid "Enter a name to search the catalog."
+msgstr ""
+
+#: src/widgets/theme_page.py:1451
+msgid "Catalog search failed: "
+msgstr ""
+
+#: src/widgets/theme_page.py:1456
+#, fuzzy
+msgid "Searching…"
+msgstr "Cerca"
+
+#: src/widgets/theme_page.py:1474
+msgid "Open"
+msgstr ""
+
+#: src/widgets/theme_page.py:1479
+msgid "Image files"
+msgstr ""
+
+#: src/widgets/theme_page.py:1502
+msgid "Preview images must be at least 512 × 512 pixels."
+msgstr ""
+
+#: src/widgets/theme_page.py:1512
+msgid "Name is required."
+msgstr ""
+
+#: src/widgets/theme_page.py:1546
+msgid "Could not save preview image: "
+msgstr ""
+
+#: src/widgets/theme_page.py:1568
+msgid "Could not save metadata: "
+msgstr ""
+
+#: src/widgets/theme_page.py:1598
+msgid "Use this catalog match?"
+msgstr ""
+
+#: src/widgets/theme_page.py:1602
+msgid "Use Match"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:42 src/widgets/wallpaper_providers.py:55
+msgid "Photography"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:43 src/widgets/wallpaper_providers.py:56
+msgid "Landscape"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:44 src/widgets/wallpaper_providers.py:57
+msgid "Nature"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:45 src/widgets/wallpaper_providers.py:58
+msgid "Space"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:46 src/widgets/wallpaper_providers.py:59
+msgid "Minimalism"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:47 src/widgets/wallpaper_providers.py:60
+msgid "Architecture"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:48 src/widgets/wallpaper_providers.py:61
+msgid "Abstract"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:49 src/widgets/wallpaper_providers.py:62
+#: src/widgets/wallpaper_providers.py:63
+msgid "Mountains"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:50 src/widgets/wallpaper_providers.py:64
+msgid "City"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:51 src/widgets/wallpaper_providers.py:65
+#, fuzzy
+msgid "Sea"
+msgstr "Cerca"
+
+#: src/widgets/wallpaper_providers.py:66
+msgid "Ocean"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:67
+msgid "Forest"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:68
+msgid "Sky"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:69
+msgid "Sunset"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:70
+msgid "Night"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:71
+msgid "Water"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:72 src/widgets/wallpaper_providers.py:73
+msgid "Cars"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:74
+msgid "Technology"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:75
+msgid "Animals"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:76
+msgid "Digital Art"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:77
+msgid "Fantasy"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:78
+msgid "Sci-Fi"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:79
+msgid "Artwork"
+msgstr ""
+
+#: src/widgets/wallpaper_providers.py:125
+msgid "Tags: "
+msgstr ""
+
+#: src/window.ui:24
+msgid "Menu"
+msgstr "Menu"
+
+#: src/window.ui:43
+msgid "_Keyboard Shortcuts"
+msgstr "_Scorciatoie da tastiera"
+
+#: src/window.ui:47
+msgid "_About Wardrobe Plus"
+msgstr "_Informazioni su Wardrobe Plus"
+
+#~ msgid "Gnome customization made easy"
+#~ msgstr "Personalizzazione di Gnome resa facile"
+
+#~ msgid ""
+#~ "**This app has not been tested for any desktop environments other than "
+#~ "Gnome, so do not expect it to fully work in Cinnamon, Xfce, etc.**"
+#~ msgstr ""
+#~ "**Questa app non è stata testata per ambienti desktop diversi da Gnome, "
+#~ "quindi non aspettarti che funzioni completamente in Cinnamon, Xfce, ecc.**"
+
+#~ msgid "GNOME Shell"
+#~ msgstr "GNOME Shell"
+
+#~ msgid "Icon"
+#~ msgstr "Icona"
+
+#~ msgid "Interface"
+#~ msgstr "Interfaccia"
+
+#~ msgid "Cursor"
+#~ msgstr "Cursore"
+
+#~ msgid "Last updated: "
+#~ msgstr "Ultimo aggiornamento: "
+
+#~ msgid "       Installs: "
+#~ msgstr "       Installazioni: "
+
+#~ msgid "... (Click for more)"
+#~ msgstr "... (Clicca per maggiori informazioni)"

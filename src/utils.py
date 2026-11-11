@@ -339,8 +339,10 @@ def _cached_get(kind, url, response_func, error_func):
         message, GLib.PRIORITY_DEFAULT, None, on_response
     )
 
-def _uncached_get(url, response_func, error_func):
+def _uncached_get(url, response_func, error_func, headers=None):
     message = Soup.Message.new("GET", url)
+    for name, value in (headers or {}).items():
+        message.get_request_headers().append(name, value)
 
     def on_response(session, result):
         try:
@@ -367,12 +369,13 @@ def _uncached_get(url, response_func, error_func):
         message, GLib.PRIORITY_DEFAULT, None, on_response
     )
 
-def soup_get(url, response_func, error_func=None):
+def soup_get(url, response_func, error_func=None, headers=None):
     if not url.startswith(_API_ENDPOINT_PREFIX):
         _uncached_get(
             url,
             lambda response_bytes: response_func(response_bytes.get_data()),
             error_func,
+            headers,
         )
         return
 

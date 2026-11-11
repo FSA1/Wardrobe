@@ -44,7 +44,8 @@ widget_sources = [
 	'widgets/search_page.py',
 	'widgets/theme_page.py',
 	'widgets/main_page_banner.py',
-	'widgets/item_carousel.py'
+	'widgets/item_carousel.py',
+	'widgets/wallpaper_providers.py',
 ]
 
 install_data(widget_sources, install_dir: moduledir)

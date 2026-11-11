@@ -67,6 +67,17 @@
   font-size: 15px;
 }
 
+.wallpaper-tag-label {
+  font-size: 0.8rem;
+}
+
+.wallpaper-tag-button {
+  min-width: 0;
+  min-height: 0;
+  padding: 2px 2px;
+  border-radius: 999px;
+}
+
 .bold {
   font-weight: bold;
 }
@@ -111,4 +122,3 @@
     box-shadow: 0 1px 4px alpha(black, 0.08);
     transition: border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
 }
-

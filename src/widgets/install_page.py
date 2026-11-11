@@ -19,9 +19,13 @@
 
 import gi, os, shutil, webbrowser, json, gc, configparser, logging, time, hashlib
 from html.parser import HTMLParser
+import tempfile
+gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gtk, Gdk, Adw, Gio, GLib, Soup, Xdp, XdpGtk4
+from gi.repository import GdkPixbuf
 from .utils import match_theme_type, soup_get, soup_get_bytes, resolve_issues, strip_html, destroy_symlinks
 from .item_carousel import ItemCarousel
+from .wallpaper_providers import get_wallhaven_wallpaper_details, translate_tag
 from datetime import datetime, timezone
 
 data_home = os.path.join(GLib.get_home_dir(), ".local", "share")
@@ -38,6 +42,35 @@ icon_roots = (
 IMAGE_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif",
     ".tif", ".tiff", ".svg",
+}
+PREVIEW_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif"}
+PREVIEW_MINIMUM_DIMENSION = 512
+PREVIEW_EXCLUDED_DIRECTORIES = {
+    "actions",
+    "animations",
+    "animation",
+    "apps",
+    "application",
+    "applications",
+    "categories",
+    "cursors",
+    "cursors_scalable",
+    "device",
+    "devices",
+    "emblems",
+    "emotes",
+    "gnome-shell",
+    "gtk-2.0",
+    "gtk-3.0",
+    "gtk-4.0",
+    "mimetypes",
+    "mime-types",
+    "panel",
+    "places",
+    "scalable",
+    "status",
+    "stock",
+    "symbolic",
 }
 
 folders = {
@@ -84,6 +117,37 @@ def pop_theme(key):
 
 def _normalized_theme_name(name):
     return "".join(character for character in name.casefold() if character.isalnum())
+
+
+def _installed_item_author(theme):
+    metadata = theme.get("metadata", {})
+    item = theme.get("item")
+    for candidate in (
+        metadata.get("author"),
+        item.get("personid") if isinstance(item, dict) else None,
+    ):
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+
+    author_lines = []
+    for candidate in theme.get("authors", []):
+        if not isinstance(candidate, str):
+            continue
+        candidate = candidate.strip()
+        normalized = candidate.casefold()
+        if (
+            not candidate
+            or len(candidate) > 120
+            or "\n" in candidate
+            or "://" in normalized
+            or normalized.startswith(("sources:", "customizer:"))
+            or " icon theme " in f" {normalized} "
+            or candidate.strip("-_= ") == ""
+        ):
+            continue
+        author_lines.append(candidate)
+    return ", ".join(dict.fromkeys(author_lines))
+
 
 def _download_stem(name):
     stem = name.casefold()
@@ -181,7 +245,7 @@ def _theme_variant_base(name):
 def _theme_variant_key(name):
     return _normalized_theme_name(_theme_variant_base(name))
 
-def _local_preview_images(paths, name):
+def _local_image_files(paths):
     image_paths = []
     for path in paths:
         if os.path.isfile(path) and os.path.splitext(path)[1].casefold() in IMAGE_EXTENSIONS:
@@ -194,13 +258,59 @@ def _local_preview_images(paths, name):
                 if os.path.splitext(filename)[1].casefold() in IMAGE_EXTENSIONS:
                     image_paths.append(os.path.join(root, filename))
 
+    return sorted(dict.fromkeys(image_paths))
+
+def _is_preview_excluded_directory(name):
+    normalized_name = name.casefold()
+    if normalized_name.endswith("@2x"):
+        return True
+    if normalized_name in PREVIEW_EXCLUDED_DIRECTORIES:
+        return True
+    width, separator, height = normalized_name.partition("x")
+    return bool(separator and width.isdecimal() and height.isdecimal())
+
+def is_valid_preview_image(path):
+    if os.path.splitext(path)[1].casefold() not in PREVIEW_EXTENSIONS:
+        return False
+    try:
+        image_info = GdkPixbuf.Pixbuf.get_file_info(path)
+    except (GLib.Error, OSError, TypeError) as error:
+        logging.debug("Could not inspect preview image %s: %s", path, error)
+        return False
+    if not image_info:
+        return False
+    _, width, height = image_info
+    return width >= PREVIEW_MINIMUM_DIMENSION and height >= PREVIEW_MINIMUM_DIMENSION
+
+def _local_preview_images(paths, name):
+    image_paths = []
+    for path in paths:
+        if os.path.isfile(path):
+            candidates = [path]
+        elif os.path.isdir(path):
+            candidates = []
+            for root, directories, files in os.walk(path, followlinks=False):
+                directories[:] = [
+                    directory for directory in directories
+                    if not _is_preview_excluded_directory(directory)
+                ]
+                candidates.extend(
+                    os.path.join(root, filename)
+                    for filename in files
+                    if os.path.splitext(filename)[1].casefold() in PREVIEW_EXTENSIONS
+                )
+        else:
+            candidates = []
+        image_paths.extend(
+            candidate for candidate in candidates if is_valid_preview_image(candidate)
+        )
+
     def rank(path):
         filename = os.path.basename(path).casefold()
         if filename.startswith("preview."):
             return 0
         if filename in {
-            f"{name.casefold()}{extension}"
-            for extension in (".png", ".jpg", ".jpeg", ".webp")
+            f"{name.casefold()}{extension}" for extension in PREVIEW_EXTENSIONS
         }:
             return 1
         if any(token in filename for token in ("screenshot", "thumbnail", "thumb")):
@@ -214,6 +324,15 @@ def _local_preview_images(paths, name):
 def _external_tracking_key(category, path_key):
     digest = hashlib.sha256(path_key.encode("utf-8")).hexdigest()[:20]
     return f"external:{category}:{digest}"
+
+def _variant_item(path, display_name, source, delete_paths=None, tracking_paths=None):
+    return {
+        "display_name": display_name,
+        "path": path,
+        "delete_paths": list(delete_paths or [path]),
+        "tracking_paths": list(tracking_paths or [path]),
+        "source": source,
+    }
 
 def _scan_local_theme_directories(theme_type):
     if theme_type in (0, 2):
@@ -371,6 +490,7 @@ def _scan_local_theme_directories(theme_type):
                                 ),
                                 "category": theme_type,
                                 "variants": [],
+                                "variant_items": [],
                                 "resource_types": [],
                             }
                             for path in group["theme_paths"]:
@@ -390,6 +510,33 @@ def _scan_local_theme_directories(theme_type):
                             if author not in group["authors"]:
                                 group["authors"].append(author)
                         group["variants"].append(entry.name)
+                        if not any(
+                            variant["path"] == entry.path
+                            for variant in group["variant_items"]
+                        ):
+                            tracked_variant_path = next(
+                                (
+                                    path for path in tracked_record[1]
+                                    if isinstance(path, str)
+                                    and (
+                                        path == entry.path
+                                        or os.path.realpath(path) == target_path
+                                    )
+                                ),
+                                entry.path,
+                            )
+                            variant_delete_paths = [entry.path]
+                            if tracked_variant_path not in variant_delete_paths:
+                                variant_delete_paths.append(tracked_variant_path)
+                            group["variant_items"].append(
+                                _variant_item(
+                                    entry.path,
+                                    local_metadata["names"][0] if local_metadata["names"] else entry.name,
+                                    group["source"],
+                                    delete_paths=variant_delete_paths,
+                                    tracking_paths=[tracked_variant_path],
+                                )
+                            )
                         if theme_type == 0:
                             resource_types = ["GNOME Shell"]
                         elif theme_type == 1:
@@ -447,6 +594,7 @@ def _scan_local_theme_directories(theme_type):
                             "source": "external",
                             "category": theme_type,
                             "variants": [],
+                            "variant_items": [],
                             "resource_types": [],
                         }
                         existing_record = tracked_themes.get(tracking_key)
@@ -470,6 +618,17 @@ def _scan_local_theme_directories(theme_type):
                         if author not in group["authors"]:
                             group["authors"].append(author)
                     group["variants"].append(entry.name)
+                    if not any(
+                        variant["path"] == entry.path
+                        for variant in group["variant_items"]
+                    ):
+                        group["variant_items"].append(
+                            _variant_item(
+                                entry.path,
+                                local_metadata["names"][0] if local_metadata["names"] else entry.name,
+                                "external",
+                            )
+                        )
                     if theme_type == 0:
                         resource_types = ["GNOME Shell"]
                     elif theme_type == 1:
@@ -490,9 +649,7 @@ def _scan_local_theme_directories(theme_type):
                         group["delete_paths"].append(entry.path)
                     if entry.path not in group["theme_paths"]:
                         group["theme_paths"].append(entry.path)
-                    group["preview_paths"] = _local_preview_images(
-                        group["theme_paths"], group["display_name"]
-                    )
+                    group["preview_paths"] = _local_preview_images(group["theme_paths"], group["display_name"])
                     if not group["metadata"].get("author") and authors:
                         group["metadata"]["author"] = ", ".join(authors)
                     if not group["metadata"].get("description") and local_metadata["description"]:
@@ -595,6 +752,15 @@ def _scan_local_theme_directories(theme_type):
             "source": metadata.get("source", "wardrobe"),
             "category": theme_type,
             "variants": list(metadata.get("variants", [])),
+            "variant_items": [
+                _variant_item(
+                    path,
+                    os.path.basename(path),
+                    metadata.get("source", "wardrobe"),
+                    tracking_paths=[path],
+                )
+                for path in managed_paths
+            ],
             "resource_types": resource_types,
         }
         themes.append(theme)
@@ -615,7 +781,7 @@ def _scan_local_theme_directories(theme_type):
         theme["description"] = metadata.get("description", theme.get("description", ""))
         theme["preview_paths"] = [
             path for path in metadata.get("preview_paths", [])
-            if isinstance(path, str) and os.path.isfile(path)
+            if isinstance(path, str) and is_valid_preview_image(path)
         ] or list(theme["preview_paths"])
 
     return themes
@@ -657,7 +823,7 @@ def _scan_installed_wallpapers():
         preview_tokens = ("preview", "screenshot", "thumbnail", "thumb")
         metadata_previews = [
             path for path in metadata.get("preview_paths", [])
-            if isinstance(path, str) and os.path.isfile(path)
+            if isinstance(path, str) and is_valid_preview_image(path)
         ]
         fallback_previews = _local_preview_images(image_paths, display_name)
         wallpaper_path = (
@@ -735,7 +901,7 @@ def _scan_installed_wallpapers():
                         loose_images.append(entry)
                     continue
                 elif entry.is_dir(follow_symlinks=False):
-                    paths = _local_preview_images([entry.path], entry.name)
+                    paths = _local_image_files([entry.path])
                     delete_paths = [entry.path]
                     display_name = _theme_variant_base(entry.name)
                 else:
@@ -754,7 +920,7 @@ def _scan_installed_wallpapers():
                 display_name = metadata.get("name", display_name)
                 previews = [
                     path for path in metadata.get("preview_paths", [])
-                    if isinstance(path, str) and os.path.isfile(path)
+                    if isinstance(path, str) and is_valid_preview_image(path)
                 ] or _local_preview_images(paths, display_name)
                 wallpaper_path = previews[0] if previews else paths[0]
                 item = (
@@ -851,6 +1017,7 @@ def _scan_installed_wallpapers():
                 "description": metadata.get("description", ""),
                 "preview_paths": previews,
                 "variants": [os.path.basename(path) for path in paths],
+                "variant_items": [],
             })
     return wallpapers
 
@@ -897,6 +1064,74 @@ def remove_external_paths(theme_type, delete_paths):
             shutil.rmtree(path)
         elif os.path.exists(path):
             os.remove(path)
+
+def remove_installed_variant(theme_type, theme, variant):
+    tracking_key = theme.get("tracking_key")
+    variant_paths = variant.get("delete_paths", [])
+    if not tracking_key or not variant_paths:
+        raise ValueError("The selected theme variant has no removable path")
+
+    source = variant.get("source", theme.get("source", "wardrobe"))
+    paths_to_forget = list(variant_paths)
+    if source == "external":
+        remove_external_paths(theme_type, variant_paths)
+    else:
+        tracked = get_installed_themes().get(tracking_key)
+        if not isinstance(tracked, (list, tuple)) or len(tracked) < 2:
+            raise ValueError("The Wardrobe installation record is missing")
+        tracked_paths = tracked[1]
+        if not isinstance(tracked_paths, (list, tuple)):
+            raise ValueError("The Wardrobe installation record is invalid")
+        tracking_paths = variant.get("tracking_paths", [variant.get("path")])
+        normalized_tracking_paths = {
+            os.path.abspath(path) for path in tracking_paths if isinstance(path, str)
+        }
+        if not normalized_tracking_paths.intersection(
+            os.path.abspath(path) for path in tracked_paths if isinstance(path, str)
+        ):
+            raise ValueError("The selected path is not part of this Wardrobe installation")
+        paths_to_forget.extend(tracking_paths)
+        remove_installed_paths(theme_type, variant_paths)
+
+    tracked = get_installed_themes().get(tracking_key)
+    if not isinstance(tracked, (list, tuple)) or len(tracked) < 2:
+        return
+    normalized_paths_to_forget = {
+        os.path.abspath(path)
+        for path in paths_to_forget
+        if isinstance(path, str)
+    }
+
+    def keep_path(path):
+        return (
+            isinstance(path, str)
+            and os.path.abspath(path) not in normalized_paths_to_forget
+            and os.path.lexists(path)
+        )
+
+    delete_paths = [
+        path for path in tracked[0]
+        if keep_path(path)
+    ] if isinstance(tracked[0], (list, tuple)) else []
+    theme_paths = [
+        path for path in tracked[1]
+        if keep_path(path)
+    ] if isinstance(tracked[1], (list, tuple)) else []
+
+    if theme_paths:
+        add_theme(
+            tracking_key,
+            delete_paths,
+            theme_paths,
+            tracked[2] if len(tracked) > 2 and isinstance(tracked[2], str) else theme["display_name"],
+            tracked[3] if len(tracked) > 3 and isinstance(tracked[3], dict) else None,
+            tracked[4] if len(tracked) > 4 and isinstance(tracked[4], dict) else None,
+        )
+        return
+
+    if source != "external":
+        remove_installed_paths(theme_type, delete_paths)
+    pop_theme(tracking_key)
 
 def find_installed_theme(
     download_name,
@@ -974,6 +1209,20 @@ class InstallPage(Adw.NavigationPage):
         super().__init__(title=theme_button.title, vexpand=True, hexpand=True)
         self.signal_ids = []
         self.theme_display_name = theme_button.title
+        self.theme_type = match_theme_type(theme_button.theme_type)
+        self.supports_installation = self.theme_type in range(5)
+        self.set_tag("install_page")
+        if getattr(theme_button, "installed_theme", None):
+            self.installed_theme = theme_button.installed_theme
+            self.installed_theme_button = theme_button
+            self.build_installed_details(theme_button)
+            return
+
+        if isinstance(getattr(theme_button, "item", None), dict) and isinstance(
+            theme_button.item.get("provider_wallpaper"), dict
+        ):
+            self.build_provider_wallpaper_details(theme_button)
+            return
 
         links = theme_button.download_links
         names = theme_button.download_names
@@ -981,9 +1230,6 @@ class InstallPage(Adw.NavigationPage):
         description = theme_button.description
         content_box = Gtk.Box(vexpand=True, hexpand=True, orientation=Gtk.Orientation.VERTICAL, spacing=18)
         scroll = Gtk.ScrolledWindow(child=content_box)
-        self.theme_type = match_theme_type(theme_button.theme_type)
-        self.supports_installation = self.theme_type in range(5)
-        self.set_tag("install_page")
 
         top_box = Gtk.Box(hexpand=True, halign=Gtk.Align.CENTER, spacing=125)
         title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, margin_top=12, spacing=8)
@@ -1165,6 +1411,680 @@ class InstallPage(Adw.NavigationPage):
             
         content_box.append(Adw.Clamp(child=download_list, maximum_size=600))
         self.set_child(scroll)
+
+    def build_provider_wallpaper_details(self, theme_button):
+        item = theme_button.item
+        wallpaper = item["provider_wallpaper"]
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=18,
+            margin_start=12,
+            margin_end=12,
+            margin_bottom=24,
+        )
+        scroll = Gtk.ScrolledWindow(child=content_box, vexpand=True, hexpand=True)
+        header = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=8,
+            margin_top=18,
+            halign=Gtk.Align.CENTER,
+        )
+        title = Gtk.Label(
+            label=theme_button.title,
+            wrap=True,
+            max_width_chars=54,
+            justify=Gtk.Justification.CENTER,
+        )
+        title.add_css_class("title-2")
+        author = strip_html(theme_button.dev) or wallpaper["provider_name"]
+        author_label = Gtk.Label(
+            label=_("By: ") + author,
+            wrap=True,
+            justify=Gtk.Justification.CENTER,
+        )
+        author_label.add_css_class("dimmed")
+        header.append(title)
+        header.append(author_label)
+        origin_url = wallpaper.get("origin_url") or theme_button.home_page
+        if origin_url:
+            web_button = Gtk.Button(
+                icon_name="web-symbolic",
+                halign=Gtk.Align.CENTER,
+                tooltip_text=_("Open source page"),
+            )
+            web_button.set_size_request(45, 45)
+            web_button.set_css_classes(["circular", "suggested-action"])
+            self.connect_button(
+                web_button,
+                "clicked",
+                lambda *_: webbrowser.open(origin_url),
+            )
+            header.append(web_button)
+        content_box.append(Adw.Clamp(child=header, maximum_size=900))
+
+        images = [theme_button.image_urls[0]] if theme_button.image_urls else []
+        self.item_carousel = ItemCarousel(
+            self.connect_button,
+            "no_buttons" if len(images) < 2 else "with_buttons",
+        )
+        self.make_carousel_images(images, self.item_carousel.carousel)
+        content_box.append(
+            Adw.Clamp(
+                child=self.item_carousel,
+                maximum_size=900,
+                height_request=350,
+                margin_start=12,
+                margin_end=12,
+            )
+        )
+
+        description = strip_html(item.get("description", ""))
+        license_name = wallpaper.get("license")
+        if license_name:
+            description = (
+                f"{description}\n\n"
+                + _("License: ")
+                + strip_html(license_name)
+            ).strip()
+        notice = _("Check the source page for complete details and licensing.")
+        description = f"{description}\n\n{notice}".strip()
+        if description:
+            description_label = Gtk.Label(
+                label=description,
+                wrap=True,
+                selectable=True,
+                margin_start=12,
+                margin_end=12,
+                xalign=0,
+            )
+            description_label.set_css_classes(["description-label"])
+            content_box.append(Adw.Clamp(child=description_label, maximum_size=900))
+
+        dimension_label = Gtk.Label(
+            label=_("{width} × {height} pixels").format(
+                width=wallpaper.get("width", 0),
+                height=wallpaper.get("height", 0),
+            ),
+            css_classes=["dimmed"],
+        )
+        content_box.append(dimension_label)
+
+        # Tags section
+        tags_section = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=8,
+            margin_start=12,
+            margin_end=12,
+            halign=Gtk.Align.CENTER,
+        )
+        tags_label = Gtk.Label(
+            label=_("Tags:"),
+            halign=Gtk.Align.CENTER,
+            css_classes=["dimmed", "bold"],
+        )
+        tags_flowbox = Gtk.FlowBox(
+            selection_mode=Gtk.SelectionMode.NONE,
+            max_children_per_line=10,
+            column_spacing=6,
+            row_spacing=6,
+            halign=Gtk.Align.CENTER,
+        )
+        tags_section.append(tags_label)
+        tags_section.append(tags_flowbox)
+        tags_section.set_visible(False)
+
+        tags_state = {"expanded": False, "all_tags": []}
+
+        def render_tags(tags_list):
+            while child := tags_flowbox.get_first_child():
+                tags_flowbox.remove(child)
+
+            if not tags_list:
+                tags_section.set_visible(False)
+                if hasattr(self, "more_like_this_button"):
+                    self.more_like_this_button.set_visible(False)
+                return
+
+            tags_state["all_tags"] = tags_list
+            tags_section.set_visible(True)
+            if hasattr(self, "more_like_this_button"):
+                self.more_like_this_button.set_visible(True)
+
+            visible_tags = (
+                tags_list
+                if tags_state["expanded"] or len(tags_list) <= 8
+                else tags_list[:8]
+            )
+
+            for tag in visible_tags:
+                tag_btn = Gtk.Button(label=translate_tag(tag))
+                tag_btn.add_css_class("pill")
+                tag_btn.add_css_class("flat")
+                self.connect_button(
+                    tag_btn,
+                    "clicked",
+                    lambda *_, t=tag: self.search_similar_wallpapers(t),
+                )
+                tags_flowbox.append(tag_btn)
+
+            if len(tags_list) > 8:
+                toggle_btn = Gtk.Button(
+                    label=_("Show less") if tags_state["expanded"] else _("Show more")
+                )
+                toggle_btn.add_css_class("pill")
+                toggle_btn.add_css_class("flat")
+
+                def toggle_tags(btn):
+                    tags_state["expanded"] = not tags_state["expanded"]
+                    render_tags(tags_state["all_tags"])
+
+                self.connect_button(toggle_btn, "clicked", toggle_tags)
+                tags_flowbox.append(toggle_btn)
+
+        initial_tags = wallpaper.get("tags") or []
+        if initial_tags:
+            render_tags(initial_tags)
+        elif wallpaper.get("provider") == "wallhaven" and wallpaper.get("id"):
+            def on_details_loaded(details):
+                loaded_tags = details.get("tags", [])
+                wallpaper["tags"] = loaded_tags
+                render_tags(loaded_tags)
+
+            get_wallhaven_wallpaper_details(
+                wallpaper["id"],
+                on_details_loaded,
+                lambda err: logging.debug("Could not fetch Wallhaven tags: %s", err),
+            )
+
+        content_box.append(Adw.Clamp(child=tags_section, maximum_size=900))
+
+        actions_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=12,
+            halign=Gtk.Align.CENTER,
+            margin_top=6,
+        )
+        self.provider_download_button = Gtk.Button(
+            label=_("Save Wallpaper"),
+            halign=Gtk.Align.CENTER,
+        )
+        self.provider_download_button.add_css_class("suggested-action")
+        self.provider_download_button.add_css_class("pill")
+        self.connect_button(
+            self.provider_download_button,
+            "clicked",
+            self.confirm_provider_wallpaper_download,
+            theme_button,
+        )
+        actions_box.append(self.provider_download_button)
+
+        self.more_like_this_button = Gtk.Button(
+            label=_("More like this"),
+            halign=Gtk.Align.CENTER,
+        )
+        self.more_like_this_button.add_css_class("pill")
+        self.more_like_this_button.set_visible(bool(initial_tags))
+        self.connect_button(
+            self.more_like_this_button,
+            "clicked",
+            lambda *_: self.on_more_like_this_clicked(theme_button),
+        )
+        actions_box.append(self.more_like_this_button)
+        content_box.append(actions_box)
+
+        self.set_child(scroll)
+
+    def on_more_like_this_clicked(self, theme_button):
+        item = getattr(theme_button, "item", {})
+        wallpaper = item.get("provider_wallpaper", {})
+        tags = wallpaper.get("tags", [])
+        if tags:
+            self.search_similar_wallpapers(tags[0])
+
+    def search_similar_wallpapers(self, query_text):
+        if not query_text:
+            return
+        nav_view = self.get_parent()
+        if not isinstance(nav_view, Adw.NavigationView):
+            nav_view = getattr(self, "page", None)
+        if nav_view:
+            nav_view.pop()
+            visible_page = nav_view.get_visible_page()
+            if hasattr(visible_page, "search_entry"):
+                visible_page.search_entry.set_text(query_text)
+                visible_page.schedule_category_search()
+                if hasattr(visible_page, "build_wallpaper_tag_chips"):
+                    visible_page.build_wallpaper_tag_chips()
+
+    def confirm_provider_wallpaper_download(self, button, theme_button):
+        dialog = Adw.MessageDialog.new(
+            self.get_root(),
+            _("Save this wallpaper?"),
+            _("The image will be downloaded from its source and saved locally."),
+        )
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("save", _("Save"))
+        dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("save")
+        dialog.connect(
+            "response",
+            lambda dialog, response: self.download_provider_wallpaper(
+                button, theme_button
+            )
+            if response == "save"
+            else None,
+        )
+        dialog.present()
+
+    def download_provider_wallpaper(self, button, theme_button):
+        item = theme_button.item
+        wallpaper = item["provider_wallpaper"]
+        download_url = wallpaper.get("download_url")
+        if not download_url:
+            self.show_provider_wallpaper_error(
+                ValueError(_("The provider did not supply a download URL"))
+            )
+            return
+
+        button.set_sensitive(False)
+        button.set_child(
+            Gtk.Spinner(
+                halign=Gtk.Align.CENTER,
+                valign=Gtk.Align.CENTER,
+                spinning=True,
+            )
+        )
+
+        def on_error(error):
+            logging.error(
+                "Could not download wallpaper %s: %s", theme_button.title, error
+            )
+            button.set_child(Gtk.Label(label=_("Save Wallpaper")))
+            button.set_sensitive(True)
+            self.show_provider_wallpaper_error(error)
+
+        def on_download(response):
+            if not response or len(response) > 50 * 1024 * 1024:
+                on_error(ValueError(_("The downloaded image is empty or too large")))
+                return
+            try:
+                directory = backgrounds_dir
+                os.makedirs(directory, exist_ok=True)
+                temporary_fd, temporary_path = tempfile.mkstemp(
+                    prefix=".wardrobe-download-",
+                    suffix=".tmp",
+                    dir=directory,
+                )
+                with os.fdopen(temporary_fd, "wb") as image_file:
+                    image_file.write(response)
+                image_format, width, height = GdkPixbuf.Pixbuf.get_file_info(
+                    temporary_path
+                )
+                if image_format is None or width <= 0 or height <= 0:
+                    raise ValueError(_("The downloaded file is not a supported image"))
+                if (
+                    width < wallpaper.get("minimum_width", 0)
+                    or height < wallpaper.get("minimum_height", 0)
+                ):
+                    raise ValueError(
+                        _("The downloaded image does not meet the selected resolution")
+                    )
+                extension = {
+                    "jpeg": ".jpg",
+                    "png": ".png",
+                    "gif": ".gif",
+                    "webp": ".webp",
+                    "bmp": ".bmp",
+                    "tiff": ".tiff",
+                    "svg": ".svg",
+                }.get(image_format.get_name())
+                if extension is None:
+                    raise ValueError(_("The downloaded image format is not supported"))
+                safe_name = "".join(
+                    character
+                    for character in theme_button.title
+                    if character.isalnum() or character in (" ", "-", "_")
+                ).strip()
+                safe_name = safe_name[:100] or _("Wallpaper")
+                if safe_name.casefold().endswith(extension):
+                    safe_name = safe_name[: -len(extension)]
+                destination = os.path.join(directory, safe_name + extension)
+                suffix = 1
+                while os.path.exists(destination):
+                    destination = os.path.join(
+                        directory, f"{safe_name} ({suffix}){extension}"
+                    )
+                    suffix += 1
+                os.replace(temporary_path, destination)
+            except (GLib.Error, OSError, TypeError, ValueError) as error:
+                try:
+                    if "temporary_path" in locals() and os.path.exists(
+                        temporary_path
+                    ):
+                        os.remove(temporary_path)
+                except OSError:
+                    logging.warning("Could not remove incomplete wallpaper download")
+                on_error(error)
+                return
+
+            tracking_key = _external_tracking_key(4, os.path.abspath(destination))
+            saved_description = strip_html(item.get("description", ""))
+            license_text = strip_html(wallpaper.get("license", ""))
+            if license_text:
+                saved_description = (
+                    f"{saved_description}\n\n"
+                    + _("License: ")
+                    + license_text
+                ).strip()
+            saved_description = (
+                f"{saved_description}\n\n"
+                + _("Check the source page for complete details and licensing.")
+            ).strip()
+            metadata = {
+                "name": theme_button.title,
+                "author": strip_html(theme_button.dev),
+                "description": saved_description,
+                "detailpage": wallpaper.get("origin_url", ""),
+                "preview_paths": [destination],
+                "provider": wallpaper.get("provider_name", ""),
+                "license": strip_html(wallpaper.get("license", "")),
+            }
+            try:
+                add_theme(
+                    tracking_key,
+                    [destination],
+                    [destination],
+                    "Wallpapers",
+                    item,
+                    metadata,
+                )
+            except (OSError, TypeError, ValueError) as error:
+                try:
+                    os.remove(destination)
+                except OSError:
+                    logging.warning(
+                        "Could not remove unregistered wallpaper %s", destination
+                    )
+                on_error(error)
+                return
+            button.set_child(Gtk.Label(label=_("Saved")))
+            button.set_sensitive(False)
+            use_button = Gtk.Button(
+                label=_("Use"),
+                halign=Gtk.Align.CENTER,
+            )
+            use_button.theme_path = destination
+            self.connect_button(use_button, "clicked", self.set_theme)
+            content_box = self.get_child().get_child()
+            content_box.append(use_button)
+
+        soup_get(download_url, on_download, on_error)
+
+    def show_provider_wallpaper_error(self, error):
+        dialog = Adw.MessageDialog.new(
+            self.get_root(),
+            _("Could not save wallpaper"),
+            str(error),
+        )
+        dialog.add_response("close", _("Close"))
+        dialog.present()
+
+    def build_installed_details(self, theme_button):
+        theme = self.installed_theme
+        metadata = theme.get("metadata", {})
+        item = theme.get("item") if isinstance(theme.get("item"), dict) else {}
+        title = (
+            metadata.get("name")
+            or theme.get("display_name")
+            or theme_button.title
+        )
+        author = _installed_item_author(theme) or _("Unknown")
+        description = (
+            metadata.get("description")
+            or item.get("description")
+            or theme.get("description", "")
+        )
+
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=18,
+            margin_start=12,
+            margin_end=12,
+            margin_bottom=24,
+        )
+        scroll = Gtk.ScrolledWindow(child=content_box, vexpand=True, hexpand=True)
+        header = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=6,
+            margin_top=18,
+            halign=Gtk.Align.CENTER,
+        )
+        title_label = Gtk.Label(
+            label=title,
+            wrap=True,
+            max_width_chars=54,
+            justify=Gtk.Justification.CENTER,
+        )
+        title_label.add_css_class("title-2")
+        author_label = Gtk.Label(
+            label=_("By: ") + author,
+            wrap=True,
+            max_width_chars=64,
+            justify=Gtk.Justification.CENTER,
+        )
+        author_label.add_css_class("dimmed")
+        header.append(title_label)
+        header.append(author_label)
+        home_page = (
+            item.get("detailpage")
+            or metadata.get("detailpage")
+            or metadata.get("url")
+            or ""
+        )
+        if home_page:
+            web_button = Gtk.Button(
+                icon_name="web-symbolic",
+                valign=Gtk.Align.CENTER,
+                halign=Gtk.Align.CENTER,
+                tooltip_text=_("Open theme page"),
+            )
+            web_button.set_size_request(45, 45)
+            web_button.set_css_classes(["circular", "suggested-action"])
+            self.connect_button(
+                web_button,
+                "clicked",
+                lambda *_: webbrowser.open(home_page),
+            )
+            header.append(web_button)
+        content_box.append(Adw.Clamp(child=header, maximum_size=900))
+
+        previews = [
+            path
+            for path in theme.get("preview_paths", [])
+            if isinstance(path, str) and is_valid_preview_image(path)
+        ]
+        if metadata.get("preview_paths"):
+            previews = [
+                path
+                for path in metadata["preview_paths"]
+                if isinstance(path, str) and is_valid_preview_image(path)
+            ]
+        image_urls = (
+            []
+            if previews
+            else list(getattr(theme_button, "image_urls", []))
+        )
+        carousel_version = (
+            "infinite" if max(len(previews), len(image_urls)) >= 3
+            else "with_buttons" if max(len(previews), len(image_urls)) == 2
+            else "no_buttons"
+        )
+        self.item_carousel = ItemCarousel(self.connect_button, carousel_version)
+        if previews:
+            for path in previews:
+                try:
+                    texture = Gdk.Texture.new_from_filename(path)
+                except (GLib.Error, OSError) as error:
+                    logging.warning("Could not load installed preview %s: %s", path, error)
+                    continue
+                picture = Gtk.Picture.new_for_paintable(texture)
+                picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+                self.item_carousel.carousel.append(picture)
+        elif image_urls:
+            self.make_carousel_images(image_urls, self.item_carousel.carousel)
+        else:
+            placeholder = Gtk.Image(
+                icon_name="image-missing-symbolic",
+                pixel_size=96,
+                valign=Gtk.Align.CENTER,
+            )
+            self.item_carousel.carousel.append(placeholder)
+        content_box.append(
+            Adw.Clamp(
+                child=self.item_carousel,
+                maximum_size=900,
+                height_request=350,
+            )
+        )
+
+        if description:
+            content_box.append(Gtk.Separator())
+            description_char_limit = 300
+            stripped_description = strip_html(description)
+            is_long_description = len(stripped_description) > description_char_limit
+            description_label = Gtk.Label(
+                label=(
+                    stripped_description[:description_char_limit] + "…"
+                    if is_long_description
+                    else stripped_description
+                ),
+                wrap=True,
+                selectable=True,
+                margin_start=12,
+                margin_end=12,
+            )
+            description_label.add_css_class("description-label")
+            content_box.append(Adw.Clamp(child=description_label, maximum_size=900))
+            if is_long_description:
+                show_more_button = Gtk.Button(
+                    label=_("Show More"),
+                    halign=Gtk.Align.CENTER,
+                )
+                show_more_button.add_css_class("pill")
+                expanded = {"value": False}
+
+                def toggle_description(button):
+                    expanded["value"] = not expanded["value"]
+                    if expanded["value"]:
+                        description_label.set_label(stripped_description)
+                        button.set_label(_("Show Less"))
+                    else:
+                        description_label.set_label(
+                            stripped_description[:description_char_limit] + "…"
+                        )
+                        button.set_label(_("Show More"))
+
+                self.connect_button(
+                    show_more_button,
+                    "clicked",
+                    toggle_description,
+                )
+                content_box.append(show_more_button)
+
+        variants = theme.get("variant_items", [])
+        if not variants:
+            variants = [
+                {
+                    "display_name": os.path.basename(path),
+                    "path": path,
+                }
+                for path in theme.get("theme_paths", [])
+                if isinstance(path, str)
+            ]
+        if variants:
+            content_box.append(Gtk.Separator())
+            content_box.append(
+                Gtk.Label(
+                    label=_("Installed Variants"),
+                    xalign=0,
+                    margin_start=8,
+                )
+            )
+            variant_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+            variant_list.add_css_class("boxed-list")
+            can_remove_variant = len(variants) > 1
+            for variant in variants:
+                row = Adw.ActionRow(
+                    title=variant.get("display_name") or os.path.basename(variant["path"]),
+                    subtitle=os.path.basename(variant["path"]),
+                )
+                variant_path = variant.get("path")
+                if self.theme_type != 0 and isinstance(variant_path, str):
+                    use_variant_button = Gtk.Button(
+                        label=_("Use"),
+                        valign=Gtk.Align.CENTER,
+                    )
+                    use_variant_button.add_css_class("suggested-action")
+                    use_variant_button.set_tooltip_text(
+                        _("Apply this installed variant")
+                    )
+                    use_variant_button.theme_path = variant_path
+                    self.connect_button(
+                        use_variant_button,
+                        "clicked",
+                        self.set_theme,
+                    )
+                    row.add_suffix(use_variant_button)
+                if can_remove_variant:
+                    remove_variant_button = Gtk.Button(
+                        label=_("Remove"),
+                        valign=Gtk.Align.CENTER,
+                    )
+                    remove_variant_button.add_css_class("destructive-action")
+                    self.connect_button(
+                        remove_variant_button,
+                        "clicked",
+                        theme_button.installed_theme_owner.confirm_remove_variant,
+                        theme,
+                        variant,
+                    )
+                    row.add_suffix(remove_variant_button)
+                variant_list.append(row)
+            content_box.append(Adw.Clamp(child=variant_list, maximum_size=900))
+
+        actions = Gtk.Box(
+            spacing=12,
+            halign=Gtk.Align.CENTER,
+            margin_top=6,
+        )
+        edit_button = Gtk.Button(label=_("Edit Metadata"))
+        edit_button.add_css_class("pill")
+        self.connect_button(
+            edit_button,
+            "clicked",
+            lambda *_: theme_button.installed_theme_owner.edit_installed_metadata(theme),
+        )
+        remove_button = Gtk.Button(label=_("Remove All"))
+        remove_button.add_css_class("destructive-action")
+        self.connect_button(
+            remove_button,
+            "clicked",
+            lambda *_: theme_button.installed_theme_owner.confirm_remove_installed(theme_button, theme),
+        )
+        actions.append(edit_button)
+        actions.append(remove_button)
+        content_box.append(actions)
+        self.item = item
+        self.description = description
+        self.set_child(scroll)
+
+    def refresh_installed_details(self, theme):
+        self.clean()
+        child = self.get_child()
+        if child:
+            child.unparent()
+        self.installed_theme = theme
+        self.build_installed_details(self.installed_theme_button)
 
     def connect_button(self, widget, signal, handler, *args):
         signal_id = widget.connect(signal, handler, *args)
@@ -1355,7 +2275,7 @@ class InstallPage(Adw.NavigationPage):
                 
     def set_theme(self, button):
         interface_settings = Gio.Settings(schema_id="org.gnome.desktop.interface")
-        chosen_item = button.get_label()
+        chosen_item = getattr(button, "theme_path", button.get_label())
         match self.theme_type:
             case 0:
                 print("feature currently unavailable")

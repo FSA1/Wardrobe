@@ -23,7 +23,16 @@ from .utils import soup_get, parse_json
 
 class ThemeCellFlowbox(Gtk.FlowBox):
     def __init__(self):
-        super().__init__(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, column_spacing=12, row_spacing=12, halign=Gtk.Align.CENTER, margin_bottom=12)
+        super().__init__(
+            selection_mode=Gtk.SelectionMode.NONE,
+            homogeneous=True,
+            min_children_per_line=1,
+            max_children_per_line=3,
+            column_spacing=12,
+            row_spacing=12,
+            halign=Gtk.Align.CENTER,
+            margin_bottom=12,
+        )
         self.search_query = ""
         self.set_filter_func(self.filter_theme, None)
 
